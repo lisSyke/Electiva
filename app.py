@@ -1,20 +1,20 @@
-from db import cedulas
+from db import cedulas  # conexión a MongoDB
 
-# Función para registrar una cédula femenina
-def registrar_cedula(numero_cedula):
-    # Validar si ya existe
-    if cedulas.find_one({"cedula": numero_cedula}):
-        print("Esa cédula ya está registrada.")
+def registrar_cedula(cedula):
+    # Buscar la cédula en la base de datos
+    persona = cedulas.find_one({"cedula": cedula})
+
+    if not persona:
+        print(f"La cédula {cedula} no está en la base de datos.")
         return
 
-    # Regla simple: último dígito par → femenina
-    if int(numero_cedula[-1]) % 2 == 0:
-        cedulas.insert_one({"cedula": numero_cedula, "genero": "F"})
-        print(" Cédula registrada como Femenina")
+    if persona["sexo"] == "Femenino":
+        print(f"{persona['nombre']} {persona['apellido1']} registrada exitosamente como usuaria.")
     else:
-        print("La cédula no corresponde a género femenino")
+        print(f"La cédula {cedula} corresponde a un hombre ({persona['nombre']} {persona['apellido1']}). Registro denegado.")
 
-# Probar registros
-registrar_cedula("1023456782")  # 
-registrar_cedula("1023456783")  # 
-registrar_cedula("1023456782")  # ya existe
+# --- Ejemplo de uso ---
+if __name__ == "__main__":
+    registrar_cedula("SIM896233790")  # mujer
+    registrar_cedula("SIM123456789")  # hombre
+    registrar_cedula("SIM999999999")  # no existe
