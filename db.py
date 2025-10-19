@@ -1,18 +1,15 @@
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
-uri = "mongodb+srv://Allison:1234aC*@cluster0.mtbam3x.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+uri = "mongodb+srv://Allison:1234aC%2A@cluster0.mtbam3x.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
-# Create a new client and connect to the server
 client = MongoClient(uri, server_api=ServerApi('1'))
 
-# Send a ping to confirm a successful connection
+db = client["proyecto_electiva"]
+cedulas = db["cedulas"]
+
 try:
     client.admin.command('ping')
-    print("Pinged your deployment. You successfully connected to MongoDB!")
+    print("✅ Conectado correctamente a MongoDB Atlas")
 except Exception as e:
-    print(e)
-
-# Definir base de datos y colección
-db = client["registro_cedulas"]   # nombre de tu base de datos
-cedulas = db["cedulas"]  
+    print("❌ Error al conectar:", e)

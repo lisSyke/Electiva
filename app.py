@@ -1,20 +1,16 @@
-from db import cedulas
+from clases.crud import crear_usuaria, buscar_usuaria, actualizar_usuaria, eliminar_usuaria
 
-# Función para registrar una cédula femenina
-def registrar_cedula(numero_cedula):
-    # Validar si ya existe
-    if cedulas.find_one({"cedula": numero_cedula}):
-        print("Esa cédula ya está registrada.")
-        return
+if __name__ == "__main__":
+    # Crear una usuaria
+    crear_usuaria("SIM999000111", "Laura", "Gómez", "laura@example.com")
 
-    # Regla simple: último dígito par → femenina
-    if int(numero_cedula[-1]) % 2 == 0:
-        cedulas.insert_one({"cedula": numero_cedula, "genero": "F"})
-        print(" Cédula registrada como Femenina")
-    else:
-        print("La cédula no corresponde a género femenino")
+    # Buscar usuaria
+    usuaria = buscar_usuaria("SIM999000111")
 
-# Probar registros
-registrar_cedula("1023456782")  # 
-registrar_cedula("1023456783")  # 
-registrar_cedula("1023456782")  # ya existe
+    # Actualizar usuaria
+    if usuaria:
+        actualizar_usuaria("SIM999000111", {"correo": "laura_nuevo@example.com"})
+
+    # Eliminar usuaria
+    eliminar_usuaria("SIM999000111")
+
