@@ -13,3 +13,6 @@ try:
     print("✅ Conectado correctamente a MongoDB Atlas")
 except Exception as e:
     print("❌ Error al conectar:", e)
+
+#Conexión corregida
+

@@ -14,3 +14,4 @@ if __name__ == "__main__":
     # Eliminar usuaria
     eliminar_usuaria("SIM999000111")
 
+#Nueva ejecución
