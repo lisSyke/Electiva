@@ -16,3 +16,9 @@ except Exception as e:
 
 #Conexión corregida
 
+# Crear índices para mejorar el rendimiento de las consultas más comunes
+cedulas.create_index("cedula", unique=True)
+cedulas.create_index("correo", unique=True)
+cedulas.create_index("alertas.fecha_hora")
+print("✅ Índices creados/actualizados correctamente.")
+

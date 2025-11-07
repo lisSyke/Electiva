@@ -21,15 +21,13 @@ def crear_usuaria(cedula, nombre, apellido1, correo):
 
 # --- READ ---
 def buscar_usuaria(cedula):
-    usuaria = cedulas.find_one({"cedula": cedula})
+    usuaria = cedulas.find_one(
+        {"cedula": cedula},
+        {"_id": 0, "cedula": 1, "nombre": 1, "apellido1": 1, "correo": 1}
+    )
     if usuaria:
         print(f"Usuaria encontrada: {usuaria['nombre']} {usuaria['apellido1']}")
-        return Usuaria(
-            usuaria["cedula"],
-            usuaria["nombre"],
-            usuaria["apellido1"],
-            usuaria["correo"]
-        )
+        return Usuaria(**usuaria)
     else:
         print(f"No se encontró la usuaria con cédula {cedula}.")
         return None
