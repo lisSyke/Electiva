@@ -1,3 +1,6 @@
+# ================================================
+#                IMPORTS
+# ================================================
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -8,36 +11,61 @@ import unicodedata
 from typing import Optional
 import pandas as pd
 
-# -------------------------
-# Config FastAPI + CORS
-# -------------------------
+
+# ================================================
+#        CONFIGURACIÓN DE FASTAPI + CORS
+# ================================================
+# Se crea la app de FastAPI
 app = FastAPI()
+
+# Se activa CORS para permitir que cualquier app móvil o navegador
+# pueda conectarse al backend sin restricciones.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],       # Permite accesos desde cualquier origen
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"],       # Permite todos los métodos (GET, POST, etc.)
     allow_headers=["*"],
 )
 
-# -------------------------
-# MongoDB
-# -------------------------
+
+# ================================================
+#                CONEXIÓN A MONGODB
+# ================================================
 MONGO_URI = "mongodb+srv://Allison:1234aC%2A@cluster0.mtbam3x.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+# Cliente de MongoDB
 client = MongoClient(MONGO_URI)
+
+# Base de datos y colección donde se guardan las usuarias
 db = client["proyecto_panico"]
 cedulas_col = db["cedulas"]
 
-# -------------------------
-# Carga CSV
-# -------------------------
+
+# ================================================
+#            CARGA Y PROCESO DEL CSV
+# ================================================
+# Archivo que simula datos reales de cedulas femeninas
 CSV_PATH = "sim_cedulas_femeninas.csv"
+
+# Carga el CSV como strings, reemplaza NaN con "" para prevenir errores
 df = pd.read_csv(CSV_PATH, dtype=str, encoding="utf-8-sig").fillna("")
+
+# Limpia encabezados del CSV por si vienen con espacios o BOM
 df.columns = [c.strip() for c in df.columns]
 
-# Añadimos columnas normalizadas
+
+# ================================================
+#     FUNCIONES DE NORMALIZACIÓN DE TEXTO
+# ================================================
 def normalizar_texto(s: Optional[str]) -> str:
-    """Convierte texto a minúsculas, sin tildes ni espacios sobrantes."""
+    """
+    Convierte texto a un formato estándar:
+    - sin tildes
+    - sin mayúsculas
+    - sin espacios innecesarios
+    Esto permite comparar datos aunque el usuario escriba diferente.
+    """
     if not s:
         return ""
     s = str(s)
@@ -45,24 +73,31 @@ def normalizar_texto(s: Optional[str]) -> str:
     s = "".join(c for c in s if not unicodedata.combining(c))
     return s.strip().casefold()
 
-df["cedula_norm"] = df["cedula_simulada"].apply(normalizar_texto)
-df["sexo_norm"] = df["sexo"].apply(normalizar_texto)
 
-# -------------------------
-# Helpers
-# -------------------------
+# Se agregan columnas normalizadas al CSV para comparar más fácil
+df["cedula_norm"] = df["cedula_simulada"].apply(normalizar_texto)
+df["sexo_norm"]   = df["sexo"].apply(normalizar_texto)
+
+
 def limpiar_cadena(texto: Optional[str]) -> str:
+    """
+    Limpia cadenas para guardarlas:
+    - quita tildes
+    - convierte a minúsculas
+    - deja solo una mayúscula inicial
+    """
     if not texto:
         return ""
     texto = str(texto).strip()
     texto = unicodedata.normalize("NFKD", texto)
     texto = "".join(c for c in texto if not unicodedata.combining(c))
-    texto = texto.casefold()  # 👈 convierte todo a minúsculas uniformes
+    texto = texto.casefold()
     texto = " ".join(texto.split())
     return texto.capitalize()
 
 
 def normalizar_sexo(texto: str):
+    """Devuelve 'F' o 'M', o None si no se identifica el sexo."""
     t = normalizar_texto(texto)
     if t in ("f", "femenino", "female", "mujer", "woman"):
         return "F"
@@ -70,8 +105,12 @@ def normalizar_sexo(texto: str):
         return "M"
     return None
 
+
 def limpiar_mongo(doc):
-    """Convierte ObjectId a str y elimina campos None."""
+    """
+    Toma un documento de MongoDB y transforma su ObjectId en string
+    para evitar errores al responder JSON.
+    """
     if not doc:
         return None
     doc = dict(doc)
@@ -79,13 +118,12 @@ def limpiar_mongo(doc):
         doc["_id"] = str(doc["_id"])
     return doc
 
+
 def normalizar_nombre_apellido(nombre: Optional[str]) -> str:
     """
-    Normaliza nombres y apellidos:
-    - Convierte a minúsculas
-    - Elimina tildes
-    - Quita dobles espacios
-    - Devuelve cadena limpia para comparación
+    Normaliza nombres y apellidos para comparar:
+    - sin tildes
+    - en minúsculas
     """
     if not nombre:
         return ""
@@ -95,11 +133,15 @@ def normalizar_nombre_apellido(nombre: Optional[str]) -> str:
 
 
 def buscar_en_csv(cedula: str):
-    """Busca por cédula normalizada, ignorando tildes y mayúsculas."""
+    """
+    Busca una cédula dentro del CSV, usando la columna normalizada.
+    """
     ced_norm = normalizar_texto(cedula)
     fila = df[df["cedula_norm"] == ced_norm]
+
     if fila.empty:
         return None
+
     f = fila.iloc[0]
     return {
         "cedula": f.get("cedula_simulada"),
@@ -113,121 +155,151 @@ def buscar_en_csv(cedula: str):
         "correo": f.get("correo_simulado"),
     }
 
-# -------------------------
-# Modelos
-# -------------------------
+
+# ================================================
+#           MODELOS DE ENTRADA (Pydantic)
+# ================================================
 class RegistroModel(BaseModel):
     cedula: str
     nombre: str
     apellido1: str
     correo: str
 
+
 class PanicoModel(BaseModel):
     cedula: str
     ubicacion: str
 
-# -------------------------
-# ENDPOINT: verificar cédula / login
-# -------------------------
+
+# ================================================
+#         ENDPOINT: VERIFICAR CÉDULA / LOGIN
+# ================================================
 @app.get("/verificar-cedula/{cedula}")
 def verificar_cedula(cedula: str):
+    """
+    Verifica si la cédula:
+    - Existe en Mongo (usuario registrada)
+    - Existe en CSV (puede registrarse)
+    - No existe (error)
+    """
     cedula_norm = normalizar_texto(cedula)
 
-    # Buscar en Mongo (comparación normalizada)
+    # Buscar primero en Mongo
     usuaria_mongo = cedulas_col.find_one({"cedula_norm": cedula_norm})
+
     if usuaria_mongo:
         usuaria_limpia = limpiar_mongo(usuaria_mongo)
         sexo_mongo = normalizar_sexo(usuaria_mongo.get("sexo"))
+
         return {
             "ok": True,
             "existe": True,
             "es_mujer": True if sexo_mongo == "F" else False,
-            "mensaje":"Login exitoso. Bienvenida.",
+            "mensaje": "Login exitoso. Bienvenida.",
             "fuente": "mongo",
             "usuaria": usuaria_limpia
         }
 
-    # Buscar en CSV
+    # Si no está en Mongo, buscar en CSV
     usuaria_csv = buscar_en_csv(cedula)
+
     if not usuaria_csv:
-        return {"existe": False, "es_mujer": None, "mensaje": "Cédula no encontrada"}
+        return {
+            "existe": False,
+            "es_mujer": None,
+            "mensaje": "Cédula no encontrada"
+        }
 
     sexo = usuaria_csv.get("sexo")
+
     if sexo == "F":
         return {
-            "ok":True,
+            "ok": True,
             "existe": False,
             "es_mujer": True,
             "fuente": "csv",
             "usuaria_csv": usuaria_csv,
             "mensaje": "Cédula encontrada y corresponde a una mujer"
         }
-    elif sexo == "M":
+
+    if sexo == "M":
         return {
-            "ok":False,
+            "ok": False,
             "existe": False,
             "es_mujer": False,
-            "fuente": "csv",
-            "usuaria_csv": usuaria_csv,
-            "mensaje": "Cédula corresponde a un hombre. Registro denegado."
-        }
-    else:
-        return {
-            "existe": False,
-            "es_mujer": None,
-            "fuente": "csv",
-            "usuaria_csv": usuaria_csv,
-            "mensaje": "Cédula encontrada pero sexo no definido"
+            "mensaje": "Cédula corresponde a un hombre. Registro denegado.",
+            "fuente": "csv"
         }
 
-# -------------------------
-# ENDPOINT: registrar
-# -------------------------
+    return {
+        "existe": False,
+        "es_mujer": None,
+        "mensaje": "Cédula encontrada pero sexo no definido"
+    }
+
+
+# ================================================
+#           ENDPOINT: REGISTRAR USUARIA
+# ================================================
 @app.post("/registrar")
 def registrar(model: RegistroModel):
+    """
+    Registra una nueva usuaria SI:
+    - No existe en Mongo
+    - Sí existe en el CSV
+    - Es mujer
+    """
     cedula = model.cedula.strip()
     cedula_norm = normalizar_texto(cedula)
 
-    # Verificar si ya existe (comparando normalizado)
+    # Verificar si ya está registrada
     if cedulas_col.find_one({"cedula_norm": cedula_norm}):
         return {"ok": False, "mensaje": "La usuaria ya está registrada."}
 
+    # Validación contra CSV
     usuaria_csv = buscar_en_csv(cedula)
+
     if not usuaria_csv:
         return {"ok": False, "mensaje": "Cédula no encontrada en CSV."}
 
     if usuaria_csv.get("sexo") != "F":
         return {"ok": False, "mensaje": "La cédula corresponde a un hombre. Registro denegado."}
 
+    # Construcción del documento a guardar
     nueva = {
         "cedula": cedula,
-        "cedula_norm": cedula_norm,  # 👈 se guarda el campo normalizado
+        "cedula_norm": cedula_norm,
         "nombre": limpiar_cadena(usuaria_csv.get("nombre") or model.nombre),
         "apellido1": limpiar_cadena(usuaria_csv.get("apellido1") or model.apellido1),
-        "correo": (usuaria_csv.get("correo") or model.correo or "").strip().lower(),
+        "correo": (usuaria_csv.get("correo") or model.correo).strip().lower(),
         "sexo": "F",
         "alertas": []
     }
-            # Insertar en Mongo
+
+    # Insertar en Mongo
     result = cedulas_col.insert_one(nueva)
 
-        # Agregar el ID como string para devolverlo sin error
+    # Adjuntar ID para el frontend
     nueva["_id"] = str(result.inserted_id)
 
     return {
-            "ok": True,
-            "mensaje": "Usuaria registrada correctamente",
-            "usuaria": nueva
+        "ok": True,
+        "mensaje": "Usuaria registrada correctamente",
+        "usuaria": nueva
     }
 
-    
-# -------------------------
-# ENDPOINT: botón de pánico
-# -------------------------
+
+# ================================================
+#         ENDPOINT: BOTÓN DE PÁNICO
+# ================================================
 @app.post("/boton-panico")
 def boton_panico(model: PanicoModel):
+    """
+    Registra una alerta de emergencia dentro del historial de la usuaria.
+    """
     cedula_norm = normalizar_texto(model.cedula)
     usuaria = cedulas_col.find_one({"cedula_norm": cedula_norm})
+
     if not usuaria:
         return {"ok": False, "mensaje": "Usuaria no encontrada. Regístrate primero."}
 
@@ -238,6 +310,14 @@ def boton_panico(model: PanicoModel):
         "estado": "Pendiente"
     }
 
-    cedulas_col.update_one({"cedula_norm": cedula_norm}, {"$push": {"alertas": alerta}})
-    return {"ok": True, "mensaje": "Alerta registrada exitosamente", "alerta": alerta}
+    cedulas_col.update_one(
+        {"cedula_norm": cedula_norm},
+        {"$push": {"alertas": alerta}}
+    )
+
+    return {
+        "ok": True,
+        "mensaje": "Alerta registrada exitosamente",
+        "alerta": alerta
+    }
 
