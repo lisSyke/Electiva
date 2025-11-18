@@ -1,15 +1,15 @@
 // Importa React y los hooks useEffect y useState
 import React, { useEffect, useState } from "react";
 
-// Importa componentes de React Native
+// Importa componentes de React Native para UI y funcionalidad
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  Modal,
-  Alert,
+  View, //contenedores
+  Text, //Textos
+  TouchableOpacity, //Botones
+  FlatList, //Lista optimizada
+  StyleSheet, //Estilos
+  Modal, //Ventanas emergentes
+  Alert, //Mensajes del sistema
 } from "react-native";
 
 // Importa el acceso a contactos del teléfono
@@ -99,26 +99,26 @@ export default function AgendaScreen() {
   };
 
   return (
+    //Título de la pantalla
     <View style={styles.container}>
       <Text style={styles.title}>Agenda de Emergencia</Text>
-
-      {/* Lista de contactos guardados */}
-      <FlatList
-        data={contactos}
+      <FlatList //Lista de contactos de emergencia ya guardados
+        data={contactos} //Datos a mostrar
         keyExtractor={(_, i) => i.toString()}
         renderItem={({ item, index }) => (
-          <View style={styles.item}>
+          <View style={styles.item}> 
+             {/*Contenedor del nombre y número*/}
             <View>
-              <Text style={styles.name}>{item.nombre}</Text>
+              <Text style={styles.name}>{item.nombre}</Text>           
               <Text style={styles.phone}>{item.telefono}</Text>
             </View>
-
-            {/* Botón de borrar */}
+          
             <TouchableOpacity onPress={() => eliminarContacto(index)}>
               <Ionicons name="trash" size={22} color="#ff4d6d" />
             </TouchableOpacity>
           </View>
         )}
+        //En caso de que no haya contactos guardados muestra este mensaje
         ListEmptyComponent={
           <Text style={{ color: "#777", textAlign: "center", marginTop: 20 }}>
             No hay contactos agregados.
@@ -126,7 +126,7 @@ export default function AgendaScreen() {
         }
       />
 
-      {/* Botón para agregar contactos */}
+      {/*Botón para abrir la agenda del teléfono*/}
       <TouchableOpacity
         style={[styles.btn, contactos.length >= 3 && { opacity: 0.6 }]}
         disabled={contactos.length >= 3} // Desactivar si ya hay 3 contactos
@@ -136,12 +136,12 @@ export default function AgendaScreen() {
         <Text style={styles.btnText}>Agregar contacto</Text>
       </TouchableOpacity>
 
-      {/* Modal para seleccionar un contacto del teléfono */}
+      {/*Muestra los contactos del teléfono*/}
       <Modal visible={modalVisible} animationType="slide">
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Selecciona un contacto</Text>
 
-          {/* Lista de contactos del teléfono */}
+          {/*Lista con los contactos disponibles del teléfono*/}
           <FlatList
             data={contactosDisponibles}
             keyExtractor={(_, i) => i.toString()}
@@ -156,7 +156,7 @@ export default function AgendaScreen() {
             )}
           />
 
-          {/* Botón cerrar modal */}
+          {/*Botón de cierre*/}
           <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
             <Text style={styles.closeText}>Cerrar</Text>
           </TouchableOpacity>
