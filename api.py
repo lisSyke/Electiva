@@ -1,15 +1,15 @@
 # ================================================
 #                IMPORTS
 # ================================================
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from datetime import datetime
-from pymongo import MongoClient
-from bson import ObjectId
-import unicodedata
-from typing import Optional
-import pandas as pd
+from fastapi import FastAPI #Importa la clase FastAPI, que permite crear tu aplicación web / API.
+from fastapi.middleware.cors import CORSMiddleware #permitir que la API sea consumida desde otros dominios
+from pydantic import BaseModel #Permite definir modelos de datos (esquemas)
+from datetime import datetime # Permite trabajar con fechas y horas (generar timestamps, registrar creación, etc.).
+from pymongo import MongoClient # Permite conectarte a una base de datos MongoDB desde Python.
+from bson import ObjectId # Convertir IDs en cadenas (str(ObjectId))
+import unicodedata #Normalizar texto
+from typing import Optional #Permite declarar atributos opcionales
+import pandas as pd #una librería para manipular datos en tablas
 
 
 # ================================================
