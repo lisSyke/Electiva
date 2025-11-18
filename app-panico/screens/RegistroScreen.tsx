@@ -1,4 +1,6 @@
-// screens/RegistroScreen.tsx
+// Pantalla de registro de usuaria
+
+// Importación de librerías principales de React y React Native
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -12,44 +14,56 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+
+// Hooks de navegación
 import { RouteProp, useRoute } from "@react-navigation/native";
 import { RootStackParamList } from "../App";
+
+// Iconos
 import { MaterialIcons } from "@expo/vector-icons";
 
+// Tipo de ruta esperada
 type RegistroRoute = RouteProp<RootStackParamList, "Registro">;
 
 export default function RegistroScreen() {
   const route = useRoute<RegistroRoute>();
+
+  // Extraemos los parámetros recibidos desde la navegación
   const { cedula: cedulaInicial, usuaria } = route.params || {};
 
-  // refs para debug/focus
+  // Referencia al input de cédula (por si quieres hacer focus o debug)
   const cedInputRef = useRef<TextInput | null>(null);
 
-  // estados editables (usamos defaultValue fallback si viene undefined)
+  // Estados del formulario, inicializados con valores recibidos (si existen)
   const [cedula, setCedula] = useState<string>(cedulaInicial ?? "");
   const [nombre, setNombre] = useState<string>(usuaria?.nombre ?? "");
   const [apellido1, setApellido1] = useState<string>(usuaria?.apellido1 ?? "");
   const [correo, setCorreo] = useState<string>(usuaria?.correo ?? "");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Para mostrar el spinner
 
+  // Solo para depurar: imprime los parámetros recibidos
   useEffect(() => {
     console.log("Registro screen params:", { cedulaInicial, usuaria });
   }, []);
 
-  // Ver que onChangeText realmente se dispara
+  // Comprobación de que el onChange realmente funciona
   const onChangeCed = (t: string) => {
     console.log("cedula typed:", t);
     setCedula(t);
   };
 
+  // Función que envía los datos al backend
   const registrar = async () => {
+    // Validación rápida
     if (!cedula || !nombre || !apellido1 || !correo) {
       Alert.alert("Campos incompletos", "Por favor completa todos los campos.");
       return;
     }
 
     try {
-      setLoading(true);
+      setLoading(true); // Activar spinner
+
+      // Petición al servidor
       const res = await fetch("http://192.168.0.8:8000/registrar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,20 +75,24 @@ export default function RegistroScreen() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json(); // Respuesta del backend
+
+      // Manejo de respuesta
       if (data.ok) {
         Alert.alert("Registro exitoso", data.mensaje || "Usuaria registrada correctamente.");
       } else {
         Alert.alert("Error", data.mensaje || "No se pudo registrar.");
       }
     } catch (e: any) {
+      // Error de red o conexión
       Alert.alert("Error de conexión", e.message || "No se pudo conectar con el servidor.");
     } finally {
-      setLoading(false);
+      setLoading(false); // Desactivar spinner
     }
   };
 
   return (
+    // Para ajustar el teclado cuando se abren inputs
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -83,25 +101,26 @@ export default function RegistroScreen() {
         <Text style={styles.title}>Registrar Usuaria</Text>
 
         <View style={styles.card}>
-          {/* CÉDULA (editable) */}
+
+          {/* Input de Cédula */}
           <View style={styles.inputGroup}>
             <MaterialIcons name="badge" size={22} color="#5c2a8a" />
             <TextInput
               ref={cedInputRef}
               style={styles.input}
               value={cedula}
-              onChangeText={setCedula}
+              onChangeText={setCedula}    // Actualiza el estado
               placeholder="Cédula"
               keyboardType="default"
               editable={true}
               returnKeyType="next"
               onSubmitEditing={() => {
-                // pasar focus al siguiente campo si quieres
+                // Aquí puedes pasar al siguiente input si quieres
               }}
             />
           </View>
 
-          {/* NOMBRE */}
+          {/* Input de Nombre */}
           <View style={styles.inputGroup}>
             <MaterialIcons name="person" size={22} color="#5c2a8a" />
             <TextInput
@@ -112,7 +131,7 @@ export default function RegistroScreen() {
             />
           </View>
 
-          {/* APELLIDO */}
+          {/* Input de Apellido */}
           <View style={styles.inputGroup}>
             <MaterialIcons name="person-outline" size={22} color="#5c2a8a" />
             <TextInput
@@ -123,7 +142,7 @@ export default function RegistroScreen() {
             />
           </View>
 
-          {/* CORREO */}
+          {/* Input de Correo */}
           <View style={styles.inputGroup}>
             <MaterialIcons name="email" size={22} color="#5c2a8a" />
             <TextInput
@@ -137,12 +156,17 @@ export default function RegistroScreen() {
           </View>
         </View>
 
+        {/* Botón de Registrar */}
         <TouchableOpacity
           style={[styles.btn, loading && { opacity: 0.6 }]}
           onPress={registrar}
-          disabled={loading}
+          disabled={loading} // Bloquea el botón mientras carga
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Registrar</Text>}
+          {loading ? (
+            <ActivityIndicator color="#fff" /> // Spinner
+          ) : (
+            <Text style={styles.btnText}>Registrar</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
