@@ -1,4 +1,7 @@
+// Importa React y los hooks useEffect y useState
 import React, { useEffect, useState } from "react";
+
+// Importa componentes de React Native
 import {
   View,
   Text,
@@ -8,40 +11,55 @@ import {
   Modal,
   Alert,
 } from "react-native";
+
+// Importa el acceso a contactos del teléfono
 import * as Contacts from "expo-contacts";
+
+// Importa almacenamiento local persistente
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Íconos de Expo
 import { Ionicons } from "@expo/vector-icons";
 
+// Tipo para definir cómo luce un contacto dentro del sistema
 type Contacto = {
   nombre: string;
   telefono: string;
 };
 
 export default function AgendaScreen() {
+  // Lista de contactos guardados como emergencia
   const [contactos, setContactos] = useState<Contacto[]>([]);
+
+  // Lista de contactos del teléfono disponibles para elegir
   const [contactosDisponibles, setContactosDisponibles] = useState<Contacto[]>([]);
+
+  // Controla si el modal de selección está visible
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Cargar contactos guardados
+  // useEffect que carga los contactos guardados al iniciar
   useEffect(() => {
     (async () => {
-      const data = await AsyncStorage.getItem("contactos");
-      if (data) setContactos(JSON.parse(data));
+      const data = await AsyncStorage.getItem("contactos"); // Leer del almacenamiento
+      if (data) setContactos(JSON.parse(data)); // Convertir JSON a array
     })();
   }, []);
 
-  // Cargar contactos del teléfono
+  // Función para abrir la agenda del teléfono
   const abrirAgenda = async () => {
-    const { status } = await Contacts.requestPermissionsAsync();
+    const { status } = await Contacts.requestPermissionsAsync(); // Pedir permisos
+
     if (status !== "granted") {
       Alert.alert("Permiso denegado", "No se puede acceder a la agenda.");
       return;
     }
 
+    // Obtener contactos del teléfono con números de teléfono
     const { data } = await Contacts.getContactsAsync({
       fields: [Contacts.Fields.PhoneNumbers],
     });
 
+    // Filtrar contactos válidos y formatearlos
     const disponibles = data
       .filter((c) => c.phoneNumbers && c.phoneNumbers.length > 0)
       .map((c) => ({
@@ -54,11 +72,11 @@ export default function AgendaScreen() {
       return;
     }
 
-    setContactosDisponibles(disponibles);
-    setModalVisible(true);
+    setContactosDisponibles(disponibles); // Guardar contactos disponibles
+    setModalVisible(true); // Abrir modal
   };
 
-  // Elegir contacto de la lista
+  // Agregar un contacto desde la lista del modal
   const seleccionarContacto = async (contacto: Contacto) => {
     if (contactos.length >= 3) {
       Alert.alert("Límite alcanzado", "Solo puedes tener 3 contactos de emergencia.");
@@ -66,24 +84,25 @@ export default function AgendaScreen() {
       return;
     }
 
-    const nuevos = [...contactos, contacto];
+    const nuevos = [...contactos, contacto]; // Agrega el nuevo contacto
     setContactos(nuevos);
-    await AsyncStorage.setItem("contactos", JSON.stringify(nuevos));
+    await AsyncStorage.setItem("contactos", JSON.stringify(nuevos)); // Guardar en memoria
     setModalVisible(false);
     Alert.alert("Contacto agregado", `${contacto.nombre} añadido a emergencia.`);
   };
 
-  // Eliminar contacto
+  // Eliminar contacto previamente guardado
   const eliminarContacto = async (index: number) => {
-    const nuevos = contactos.filter((_, i) => i !== index);
+    const nuevos = contactos.filter((_, i) => i !== index); // Filtra el eliminado
     setContactos(nuevos);
-    await AsyncStorage.setItem("contactos", JSON.stringify(nuevos));
+    await AsyncStorage.setItem("contactos", JSON.stringify(nuevos)); // Guardar cambios
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Agenda de Emergencia</Text>
 
+      {/* Lista de contactos guardados */}
       <FlatList
         data={contactos}
         keyExtractor={(_, i) => i.toString()}
@@ -93,6 +112,8 @@ export default function AgendaScreen() {
               <Text style={styles.name}>{item.nombre}</Text>
               <Text style={styles.phone}>{item.telefono}</Text>
             </View>
+
+            {/* Botón de borrar */}
             <TouchableOpacity onPress={() => eliminarContacto(index)}>
               <Ionicons name="trash" size={22} color="#ff4d6d" />
             </TouchableOpacity>
@@ -105,19 +126,22 @@ export default function AgendaScreen() {
         }
       />
 
+      {/* Botón para agregar contactos */}
       <TouchableOpacity
         style={[styles.btn, contactos.length >= 3 && { opacity: 0.6 }]}
-        disabled={contactos.length >= 3}
+        disabled={contactos.length >= 3} // Desactivar si ya hay 3 contactos
         onPress={abrirAgenda}
       >
         <Ionicons name="person-add" size={20} color="#fff" />
         <Text style={styles.btnText}>Agregar contacto</Text>
       </TouchableOpacity>
 
-      {/* Modal de selección */}
+      {/* Modal para seleccionar un contacto del teléfono */}
       <Modal visible={modalVisible} animationType="slide">
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Selecciona un contacto</Text>
+
+          {/* Lista de contactos del teléfono */}
           <FlatList
             data={contactosDisponibles}
             keyExtractor={(_, i) => i.toString()}
@@ -131,6 +155,8 @@ export default function AgendaScreen() {
               </TouchableOpacity>
             )}
           />
+
+          {/* Botón cerrar modal */}
           <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
             <Text style={styles.closeText}>Cerrar</Text>
           </TouchableOpacity>
@@ -139,6 +165,7 @@ export default function AgendaScreen() {
     </View>
   );
 }
+
 
 const PURPLE = "#5c2a8a";
 const LIGHT = "#f3e9ff";
